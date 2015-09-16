@@ -39,5 +39,5 @@ You can add an optional boolean column to the input csv titled "Include", which 
 ##Requirements:
 * Python 2.7
 * [FreeSurfer](https://surfer.nmr.mgh.harvard.edu/fswiki/FreeSurferWiki)
-* [Pandas (and dependencies)](https://github.com/statsmodels/statsmodels)
-* [StatsModels (and dependencies)](http://pandas.pydata.org)
+* [Pandas (and dependencies)](http://pandas.pydata.org)
+* [StatsModels (and dependencies)](https://github.com/statsmodels/statsmodels)

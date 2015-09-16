@@ -30,8 +30,6 @@ Options:
 
 
 import csv, sys, os, shutil, subprocess, math
-import pyximport
-pyximport.install()
 import pandas
 sys.path.append("lib/docopt")
 from statsmodels import api as sm
@@ -171,6 +169,7 @@ def cleanargs(args):
           name += "_cf_{0}".format(cfvar)
   clean["GLMNAME"] = name
   clean["ProjectPath"] = "{0}/{1}".format(clean["ProjectDir"], clean["GLMNAME"])
+  clean["GroupColumn"] = args["--groupcol"]
 
   return clean
 
@@ -223,7 +222,7 @@ def createFSGD(args):
 
 
     if args["IsGroup"]:
-      for group in uniquegroups:
+      for group in getUniqueValsInCol(args["csvdata"], args["GroupColumn"]):
         fsgdfilelist.append("Class {0}".format(group))
     else:
       fsgdfilelist.append("Class Main")
@@ -238,7 +237,12 @@ def createFSGD(args):
       else:
         currentGroup = "Main"
 
-      fsgdfileline = "Input\t{0}_base\t{1}".format(index, currentGroup)
+      fsgdfileline = "Input\t{0}".format(index)
+      if args["IsLongitudinal"]:
+          fsgdfileline += "_base"
+
+      fsgdfileline += "\t{0}".format(currentGroup)
+
       if args["HasMainVar"] == True:
           fsgdfileline += "\t{0}".format(args["csvdata"][args["MainVar"]][index])
       if args["HasControlForVars"] == True:
@@ -310,7 +314,7 @@ def runCommands(commands):
     print
     for command in commands:
         print("Performing {0}".format(command["Name"]))
-        #systemCall(command["Command"])
+        print(systemCall(command["Command"]))
 
 #============================================================================
 #============ Main ==========================================================
@@ -346,7 +350,6 @@ def run(args):
     uniquegroups.remove(arguments["Group2"])
     for group in uniquegroups:
       csvdata = removeRowsWithCriteria(arguments["csvdata"], arguments["GroupColumn"], group)
-    uniquegroups=getUniqueValsInCol(arguments["csvdata"], arguments["GroupColumn"])
 
   #Remove Subjects with missing data
   for header in list(arguments["csvdata"].columns.values):
