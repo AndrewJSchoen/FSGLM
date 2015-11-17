@@ -13,7 +13,8 @@ Options:
   --meas=measure                            Freesurfer measure (thickness, pial, area, curv, etc.). [default: thickness]
   --hemi=hemi                               Hemisphere to analyze (upper/lowercase versions of lh/left/l or rh/right/r).
   --smooth=smooth                           Amount of smoothing, using a gaussian kernel with the given value specified in mm. [default: 5]
-  --thresh=threshold                        Cluster-forming threshold (choose from 0.05, 0.01, 0.005, 0.001, 0.0005, or 0.0001). [default: 0.05]
+  --clustthresh=clusterthreshold            Cluster-forming threshold (choose from 0.05, 0.01, 0.005, 0.001, 0.0005, or 0.0001). [default: 0.05]
+  --sigthresh=significancethreshold         Significance threshold (choose from 0.05, 0.01, 0.005, 0.001, 0.0005, or 0.0001). [default: 0.05]
   -l --longitudinal                         Specify longitudinal processing. Required if specifying T1var and T2var. [default: False]
   -c --covariate                            Include a covariate in the model. [default: False]
   --var=var                                 Var for non-longitudinal analysis. [default: False]
@@ -131,21 +132,37 @@ def cleanargs(args):
   clean["FreeSurferMeasure"] = args["--meas"]
   clean["Smoothing"] = args["--smooth"]
 
-  clean["Threshold"] = str(args["--thresh"])
-  if clean["Threshold"] == "0.05":
-    clean["LogThreshold"] = "1.3"
-  elif clean["Threshold"] == "0.01":
-    clean["LogThreshold"] = "2.0"
-  elif clean["Threshold"] == "0.005":
-    clean["LogThreshold"] = "2.3"
-  elif clean["Threshold"] == "0.001":
-    clean["LogThreshold"] = "3.0"
-  elif clean["Threshold"] == "0.0005":
-    clean["LogThreshold"] = "3.3"
-  elif clean["Threshold"] == "0.0001":
-    clean["LogThreshold"] = "4.0"
+  clean["SigThreshold"] = str(args["--sigthresh"])
+  if clean["SigThreshold"] == "0.05":
+    clean["LogSigThreshold"] = "1.3"
+  elif clean["SigThreshold"] == "0.01":
+    clean["LogSigThreshold"] = "2.0"
+  elif clean["SigThreshold"] == "0.005":
+    clean["LogSigThreshold"] = "2.3"
+  elif clean["SigThreshold"] == "0.001":
+    clean["LogSigThreshold"] = "3.0"
+  elif clean["SigThreshold"] == "0.0005":
+    clean["LogSigThreshold"] = "3.3"
+  elif clean["SigThreshold"] == "0.0001":
+    clean["LogSigThreshold"] = "4.0"
   else:
-    clean["LogThreshold"] = string(math.floor(math.log(float(clean["Threshold"]))*10)/10)
+    clean["LogSigThreshold"] = string(math.floor(math.log(float(clean["SigThreshold"]))*10)/10)
+
+  clean["ClustThreshold"] = str(args["--clustthresh"])
+  if clean["ClustThreshold"] == "0.05":
+    clean["LogClustThreshold"] = "1.3"
+  elif clean["ClustThreshold"] == "0.01":
+    clean["LogClustThreshold"] = "2.0"
+  elif clean["ClustThreshold"] == "0.005":
+    clean["LogClustThreshold"] = "2.3"
+  elif clean["ClustThreshold"] == "0.001":
+    clean["LogClustThreshold"] = "3.0"
+  elif clean["ClustThreshold"] == "0.0005":
+    clean["LogClustThreshold"] = "3.3"
+  elif clean["ClustThreshold"] == "0.0001":
+    clean["LogClustThreshold"] = "4.0"
+  else:
+    clean["LogClustThreshold"] = string(math.floor(math.log(float(clean["ClustThreshold"]))*10)/10)
 
   hemistring = str(args["--hemi"]).lower()
   if hemistring == "l" or hemistring == "lh" or hemistring == "left":
@@ -294,11 +311,11 @@ def getCommands(args):
 
     spatialsmoothcommand = "SUBJECTS_DIR={0} ; mri_surf2surf --s fsaverage --hemi {1} --fwhm {2} --sval {3} --tval {4}".format(args["SubjectDir"], args["Hemisphere"], args["Smoothing"], unsmoothedbrainfile, smoothedbrainfile)
     glmcommand = "SUBJECTS_DIR={0} ; mri_glmfit --glmdir {1} --y {2} --fsgd {3} --C {4} --surface fsaverage {5}".format(args["SubjectDir"], args["ProjectPath"], smoothedbrainfile, "{0}/{1}.fsgd".format(args["ProjectPath"], args["GLMNAME"]), "{0}/{1}.mtx".format(args["ProjectPath"], args["GLMNAME"]), args["Hemisphere"])
-    correctcommand = "mri_glmfit-sim --glmdir {0} --cache {1} abs --cwp  {2} --2spaces".format(args["ProjectPath"], args["LogThreshold"], args["Threshold"])
-    lateralviewcommanduncorrected = 'xvfb-run -s "-screen 0 1280x1024x24" --auto-servernum freeview -viewport "3d" -viewsize 1280 1024 -f {0}/fsaverage/surf/{1}.inflated:edgethickness=0:overlay={2}/{3}/sig.mgh:overlay_threshold={4},6 -cam Azimuth 0 -zoom 1.4 -ss {2}/{3}_uncorrected_dorsal.png'.format(args["SubjectDir"], args["Hemisphere"], args["ProjectPath"], args["GLMNAME"], args["LogThreshold"])
-    medialviewcommanduncorrected =  'xvfb-run -s "-screen 0 1280x1024x24" --auto-servernum freeview -viewport "3d" -viewsize 1280 1024 -f {0}/fsaverage/surf/{1}.inflated:edgethickness=0:overlay={2}/{3}/sig.mgh:overlay_threshold={4},6 -cam Azimuth 180 -zoom 1.4 -ss {2}/{3}_uncorrected_medial.png'.format(args["SubjectDir"], args["Hemisphere"], args["ProjectPath"], args["GLMNAME"], args["LogThreshold"])
-    lateralviewcommandcorrected = 'xvfb-run -s "-screen 0 1280x1024x24" --auto-servernum freeview -viewport "3d" -viewsize 1280 1024 -f {0}/fsaverage/surf/{1}.inflated:edgethickness=0:overlay={2}/{3}/cache.th{4}.abs.sig.cluster.mgh:overlay_threshold={5},6 -cam Azimuth 0 -zoom 1.4 -ss {2}/{3}_corrected_dorsal.png'.format(args["SubjectDir"], args["Hemisphere"], args["ProjectPath"], args["GLMNAME"], args["LogThreshold"].replace(".", ""), args["LogThreshold"])
-    medialviewcommandcorrected = 'xvfb-run -s "-screen 0 1280x1024x24" --auto-servernum freeview -viewport "3d" -viewsize 1280 1024 -f {0}/fsaverage/surf/{1}.inflated:edgethickness=0:overlay={2}/{3}/cache.th{4}.abs.sig.cluster.mgh:overlay_threshold={5},6 -cam Azimuth 180 -zoom 1.4 -ss {2}/{3}_corrected_medial.png'.format(args["SubjectDir"], args["Hemisphere"], args["ProjectPath"], args["GLMNAME"], args["LogThreshold"].replace(".", ""), args["LogThreshold"])
+    correctcommand = "mri_glmfit-sim --glmdir {0} --cache {1} abs --cwp  {2} --2spaces".format(args["ProjectPath"], args["LogClustThreshold"], args["SigThreshold"])
+    lateralviewcommanduncorrected = 'xvfb-run -s "-screen 0 1280x1024x24" --auto-servernum freeview -viewport "3d" -viewsize 1280 1024 -f {0}/fsaverage/surf/{1}.inflated:edgethickness=0:overlay={2}/{3}/sig.mgh:overlay_threshold={4},6 -cam Azimuth 0 -zoom 1.4 -ss {2}/{3}_uncorrected_dorsal.png'.format(args["SubjectDir"], args["Hemisphere"], args["ProjectPath"], args["GLMNAME"], args["LogSigThreshold"])
+    medialviewcommanduncorrected =  'xvfb-run -s "-screen 0 1280x1024x24" --auto-servernum freeview -viewport "3d" -viewsize 1280 1024 -f {0}/fsaverage/surf/{1}.inflated:edgethickness=0:overlay={2}/{3}/sig.mgh:overlay_threshold={4},6 -cam Azimuth 180 -zoom 1.4 -ss {2}/{3}_uncorrected_medial.png'.format(args["SubjectDir"], args["Hemisphere"], args["ProjectPath"], args["GLMNAME"], args["LogSigThreshold"])
+    lateralviewcommandcorrected = 'xvfb-run -s "-screen 0 1280x1024x24" --auto-servernum freeview -viewport "3d" -viewsize 1280 1024 -f {0}/fsaverage/surf/{1}.inflated:edgethickness=0:overlay={2}/{3}/cache.th{4}.abs.sig.cluster.mgh:overlay_threshold={5},6 -cam Azimuth 0 -zoom 1.4 -ss {2}/{3}_corrected_dorsal.png'.format(args["SubjectDir"], args["Hemisphere"], args["ProjectPath"], args["GLMNAME"], args["LogClustThreshold"].replace(".", ""), args["LogSigThreshold"])
+    medialviewcommandcorrected = 'xvfb-run -s "-screen 0 1280x1024x24" --auto-servernum freeview -viewport "3d" -viewsize 1280 1024 -f {0}/fsaverage/surf/{1}.inflated:edgethickness=0:overlay={2}/{3}/cache.th{4}.abs.sig.cluster.mgh:overlay_threshold={5},6 -cam Azimuth 180 -zoom 1.4 -ss {2}/{3}_corrected_medial.png'.format(args["SubjectDir"], args["Hemisphere"], args["ProjectPath"], args["GLMNAME"], args["LogClustThreshold"].replace(".", ""), args["LogSigThreshold"])
 
     commands=[{"Name": "Preprocessing", "Command": mrispreproccommand},
               {"Name": "Spatial Smoothing", "Command": spatialsmoothcommand},
